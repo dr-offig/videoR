@@ -1,0 +1,18 @@
+Package: videoR
+Title: HTMLWidget for Video Manipulation
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Toby",
+           family = "Gifford",
+           role = c("aut", "cre"),
+           email = "dr.offig@offig.com")
+Description: For interactive playback and zooming of video.
+License: MIT
+Encoding: UTF-8
+LazyData: true
+Depends:
+    R (>= 3.0)
+Imports:
+    htmlwidgets (>= 0.6),
+    htmltools (>= 0.3.5)
+    

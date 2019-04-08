@@ -350,8 +350,8 @@ HTMLWidgets.widget({
 
       	function setupVideo(url) {
       	  const video = document.createElement('video');
-
-      	  var playing = false;
+          video.crossorigin = "anonymous";
+          var playing = false;
       	  var timeupdate = false;
 
       	  video.autoplay = true;
@@ -372,6 +372,7 @@ HTMLWidgets.widget({
       	  }, true);
 
       	  video.src = url;
+
       	  video.play();
 
       	  function checkReady() {
@@ -379,7 +380,7 @@ HTMLWidgets.widget({
       	      copyVideo = true; }}
 
       	  return video;
-      	};
+      	}
 
       	//function setupSFX(url) {
       	//	const sfx = document.createElement('audio');

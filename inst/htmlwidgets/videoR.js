@@ -350,7 +350,7 @@ HTMLWidgets.widget({
 
       	function setupVideo(url) {
       	  const video = document.createElement('video');
-          video.crossorigin = "anonymous";
+          video.crossOrigin = "anonymous";
           var playing = false;
       	  var timeupdate = false;
 

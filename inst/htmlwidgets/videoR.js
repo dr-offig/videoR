@@ -6,8 +6,46 @@ HTMLWidgets.widget({
 
   factory: function(el, width, height) {
 
+    ///////////////// Polyfills //////////////////
+    // https://github.com/uxitten/polyfill/blob/master/string.polyfill.js
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/padStart
+    if (!String.prototype.padStart) {
+      String.prototype.padStart = function padStart(targetLength, padString) {
+        targetLength = targetLength >> 0; //truncate if number, or convert non-number to 0;
+        padString = String(typeof padString !== 'undefined' ? padString : ' ');
+        if (this.length >= targetLength) {
+          return String(this);
+        } else {
+          targetLength = targetLength - this.length;
+          if (targetLength > padString.length) {
+            padString += padString.repeat(targetLength / padString.length);
+          }
+          return padString.slice(0, targetLength) + String(this);
+        }
+      };
+    }
+    /////////////////////////////////////////////
+
+    formatTime = function(secs) {
+      var ss = Math.floor(secs);
+      var fr = secs - ss;
+      var seconds = ss % 60;
+      var ms = Math.floor(ss / 60);
+      var minutes = ms % 60;
+      var hours = Math.floor(ms / 3600);
+      return(hours.toString().padStart(2,0) + "-" + minutes.toString().padStart(2,0) + "-" + seconds.toString().padStart(2,0));
+    };
+
+    extractMainIdentifier = function(filepath) {
+      var ta1 = filepath.split("/");
+      var filename = ta1[ta1.length - 1];
+      var ta2 = filename.split(".").slice(0,-1);
+      return (ta2.join("."));
+    };
+
     // TODO: define shared variables for this instance
     var copyVideo = false;
+    var capture = false;
     var zoom = 1.0;
     var poi = { x: 0.0, y: 0.0 };
     var old_poi = poi;
@@ -417,7 +455,7 @@ HTMLWidgets.widget({
        		else if (evt.key == " ") { event.preventDefault(); togglePlayback(); }
       		else if (evt.key == "ArrowRight") { if (video.paused) showNextFrame(); else nudge(1.0); }
       		else if (evt.key == "ArrowLeft") { if (video.paused) nudge(-1/30); else nudge(-1.0); }
-      		else if (evt.key == "F13") { console.log("Snapshot"); }
+      		else if (evt.key == "F13") { capture = true; }
       		else if (evt.key == "d") { event.preventDefault(); toggleSubtractPrevFrame();  }
       		else { console.log(evt); }
       	};
@@ -518,6 +556,15 @@ HTMLWidgets.widget({
 
       		// draw the scene
           drawScene(gl, programInfo, buffers, currFrameTexture, prevFrameTexture, deltaTime);
+
+          if (capture) {
+            capture = false;
+            //var data = canvas.toDataURL("image/png", 1);
+            //document.getElementById('snapshot').setAttribute('src', data);
+            canvas.toBlob(function(blob) {
+              saveAs(blob, extractMainIdentifier(x.videoURL) + "_" + formatTime(video.currentTime) + ".png");
+            });
+          }
 
           // and update the previous frame texture
       		if (subtractPrevFrame && copyVideo && !video.seeking)

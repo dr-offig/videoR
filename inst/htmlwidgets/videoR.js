@@ -452,11 +452,11 @@ HTMLWidgets.widget({
 
       	keydownHandler = function(evt) {
           if (evt.key == "0") { resetZoomAndPan(); }
-       		else if (evt.key == " ") { event.preventDefault(); togglePlayback(); }
+       		else if (evt.key == " ") { evt.preventDefault(); togglePlayback(); }
       		else if (evt.key == "ArrowRight") { if (video.paused) showNextFrame(); else nudge(1.0); }
       		else if (evt.key == "ArrowLeft") { if (video.paused) nudge(-1/30); else nudge(-1.0); }
       		else if (evt.key == "F13") { capture = true; }
-      		else if (evt.key == "d") { event.preventDefault(); toggleSubtractPrevFrame();  }
+      		else if (evt.key == "d") { evt.preventDefault(); toggleSubtractPrevFrame();  }
       		else { console.log(evt); }
       	};
 

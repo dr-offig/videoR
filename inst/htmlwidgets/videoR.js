@@ -368,7 +368,7 @@ HTMLWidgets.widget({
         if (!gl) { alert('Unable to initialize WebGL. Your browser or machine may not support it.'); return; }
 
       	// The video
-      	const video = setupVideo(x.videoURL);
+      	const video = setupVideo(x.videoURL, x.videoName);
         video.style.display = 'none';
       	togglePlayback = function() {
       		if (video.paused) {
@@ -386,8 +386,9 @@ HTMLWidgets.widget({
 
       	nudge = function(amt) { video.currentTime += amt; };
 
-      	function setupVideo(url) {
+      	function setupVideo(url,name) {
       	  const video = document.createElement('video');
+          video.id = name;
           video.crossOrigin = "anonymous";
           var playing = false;
       	  var timeupdate = false;

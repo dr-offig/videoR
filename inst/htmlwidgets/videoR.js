@@ -370,6 +370,7 @@ HTMLWidgets.widget({
       	// The video
       	const video = setupVideo(x.videoURL, x.videoName);
         video.style.display = 'none';
+      	canvas.appendChild(video);
       	togglePlayback = function() {
       		if (video.paused) {
       			frameByFrame = false;

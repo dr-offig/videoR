@@ -3,6 +3,7 @@ dependencies:
    version: 1.0.0
    src: htmlwidgets/lib/webgl-examples
    script: gl-matrix.js
+   stylesheet: extra-styles.css
  - name: FileSaver
    version: 2.0.0
    src: htmlwidgets/lib/FileSaver

@@ -358,7 +358,7 @@ HTMLWidgets.widget({
 
         // TODO: code to render the widget, e.g.
         //el.innerText = x.message;
-        el.innerHTML = "<canvas id='glcanvas' width='1920px' height='1080px'></canvas>";
+        el.innerHTML = "<div class='grid-container'><div class='grid-item'><canvas id='glcanvas' width='1920px' height='1080px'></canvas></div><div class='grid-item'><div class='slidecontainer'><input type='range' min='0' max='1' value='0' step='any' class='slider' id='" + x.videoName + "_playhead'></div></div></div>";
         const canvas = document.querySelector('#glcanvas');
         const gl = canvas.getContext('webgl');
         canvas.style.width = '100%';
@@ -366,6 +366,9 @@ HTMLWidgets.widget({
 
         // If we don't have a GL context, give up now
         if (!gl) { alert('Unable to initialize WebGL. Your browser or machine may not support it.'); return; }
+
+        // The playback time slider
+        const timeSlider = document.getElementById(x.videoName + '_playhead')
 
       	// The video
       	const video = setupVideo(x.videoURL, x.videoName);
@@ -408,6 +411,7 @@ HTMLWidgets.widget({
 
       	  video.addEventListener('timeupdate', function() {
       	     timeupdate = true;
+      	     timeSlider.value = video.currentTime / video.duration;
       	     checkReady();
       	  }, true);
 
@@ -462,6 +466,13 @@ HTMLWidgets.widget({
       		else { console.log(evt); }
       	};
 
+
+        ignoreKeyboardHandler = function(evt) {
+          evt.preventDefault();
+          if(evt.type == "keydown") { keydownHandler(evt); }
+        }
+
+
       	wheelHandler = function(evt) {
       		evt.preventDefault();
       		console.log(evt);
@@ -470,11 +481,21 @@ HTMLWidgets.widget({
       		zoom = Math.max(zoom, 1.0);
       	};
 
+        timeSliderHandler = function(evt) {
+          var newtime = video.duration * timeSlider.value
+          console.log("Scrubbing to " + newtime)
+          video.currentTime = newtime
+        }
+
       	document.addEventListener('keydown', keydownHandler);
       	canvas.addEventListener('wheel', wheelHandler);
       	canvas.addEventListener('mousedown', mousedownHandler);
       	canvas.addEventListener('mouseup', mouseupHandler);
       	canvas.addEventListener('mousemove', mousemoveHandler);
+        timeSlider.addEventListener('change', timeSliderHandler);
+        timeSlider.addEventListener('keydown', ignoreKeyboardHandler);
+        timeSlider.addEventListener('keyup', ignoreKeyboardHandler);
+        timeSlider.addEventListener('keypress', ignoreKeyboardHandler);
 
         // Vertex shader program
         const vsSource = `

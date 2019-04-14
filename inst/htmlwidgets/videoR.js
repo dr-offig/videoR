@@ -24,16 +24,39 @@ HTMLWidgets.widget({
         }
       };
     }
+
+    //////// ybot ////////
+    if (!Array.prototype.closestTo) {
+      Array.prototype.closestTo = function closestTo(x) {
+        //var dists = this.map(function(a) { Math.abs(a - x); });
+        const N = this.length;
+        if (N === 0) {
+          return NaN;
+        } else {
+          var tmpVal = Infinity;
+          var tmpInd = -1;
+          for (var i=0; i<N; i++) {
+            var val = this[i];
+            if (Math.abs(x-val) < tmpVal) {
+              tmpInd = i;
+              tmpVal = val;
+            }
+          }
+          return this[tmpInd];
+        }
+      };
+    }
+
     /////////////////////////////////////////////
 
-    formatTime = function(secs) {
+    formatTime = function(secs, sep="-") {
       var ss = Math.floor(secs);
       var fr = secs - ss;
       var seconds = ss % 60;
       var ms = Math.floor(ss / 60);
       var minutes = ms % 60;
       var hours = Math.floor(ms / 3600);
-      return(hours.toString().padStart(2,0) + "-" + minutes.toString().padStart(2,0) + "-" + seconds.toString().padStart(2,0));
+      return(hours.toString().padStart(2,0) + sep + minutes.toString().padStart(2,0) + sep + seconds.toString().padStart(2,0));
     };
 
     extractMainIdentifier = function(filepath) {
@@ -41,6 +64,15 @@ HTMLWidgets.widget({
       var filename = ta1[ta1.length - 1];
       var ta2 = filename.split(".").slice(0,-1);
       return (ta2.join("."));
+    };
+
+    addMarker = function(markers,t) {
+      const columns = Object.entries(markers);
+      for (var i = 0; i < columns.length; i++) {
+        var column = columns[i];
+        if (column[0] === "time") { column[1].push(t); } else { column[1].push(null); }
+      }
+      return markers;
     };
 
     // TODO: define shared variables for this instance
@@ -53,6 +85,10 @@ HTMLWidgets.widget({
     var panClickPoint = { x: 0.0, y: 0.0 };
     var subtractPrevFrame = false;
     var frameByFrame = false;
+    var noizeOverlay = false;
+    //var hoverMarker = -1;
+    var hoverPoint = 0.0;
+    var hoveringOverScrubber = false;
 
     resetZoomAndPan = function(dur) {
 	    old_poi = poi;
@@ -77,19 +113,25 @@ HTMLWidgets.widget({
       };
     }
 
+    function getMouseTextureCoord(canvas, evt) {
+      var rect = canvas.getBoundingClientRect();
+		  return {
+				x: (evt.clientX - rect.left) / (rect.right - rect.left),
+        y: (evt.clientY - rect.top) / (rect.bottom - rect.top)
+      };
+    }
+
+
     function initBuffers(gl) {
 
       // Create a buffer for the square's positions.
-
       const positionBuffer = gl.createBuffer();
 
       // Select the positionBuffer as the one to apply buffer
       // operations to from here out.
-
       gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
       // Now create an array of positions for the square.
-
       const positions = [
         -1.0, -1.0,
          1.0, -1.0,
@@ -100,11 +142,9 @@ HTMLWidgets.widget({
       // Now pass the list of positions into WebGL to build the
       // shape. We do this by creating a Float32Array from the
       // JavaScript array, then use it to fill the current buffer.
-
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
-
-    	// Creat the texture coordinates
+    	// Create the texture coordinates
     	const textureCoordBuffer = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
 
@@ -278,25 +318,21 @@ HTMLWidgets.widget({
       // Tell WebGL which indices to use to index the vertices
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
 
-
       // Tell WebGL to use our program when drawing
       gl.useProgram(programInfo.program);
 
       // Set the shader uniforms
-
       gl.uniformMatrix4fv(
           programInfo.uniformLocations.projectionMatrix,
           false,
           projectionMatrix);
-    //
+
     	gl.uniformMatrix4fv(
           programInfo.uniformLocations.modelViewMatrix,
           false,
           modelViewMatrix);
 
-
       // Specify the texture to map onto the canvas.
-
       // We will store the currFrameTexture in texture unit 0
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, currFrameTexture);
@@ -307,6 +343,13 @@ HTMLWidgets.widget({
       gl.bindTexture(gl.TEXTURE_2D, prevFrameTexture);
       gl.uniform1i(programInfo.uniformLocations.prevFrame, 1);
 
+      if (noizeOverlay) {
+        gl.uniform1f(programInfo.uniformLocations.overlayAlpha, 1.0);
+        gl.uniform1f(programInfo.uniformLocations.noizeSeed, Math.random());
+      } else {
+        gl.uniform1f(programInfo.uniformLocations.overlayAlpha, 0.0);
+      }
+
       { // process the textures into the quad
         const type = gl.UNSIGNED_SHORT;
     		const offset = 0;
@@ -314,6 +357,7 @@ HTMLWidgets.widget({
         gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
       }
     }
+
     function initShaderProgram(gl, vsSource, fsSource) {
       const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
       const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
@@ -352,28 +396,106 @@ HTMLWidgets.widget({
       return shader;
     }
 
+
+    // Rendering logic for the video timeline scrubber
+    function drawScrubber(canvas, ctx, markers, curtime, totaltime, isHovering, whereHovering, isSeeking) {
+      const width = canvas.width;
+      const height = canvas.height;
+
+      // Creamy white background
+      ctx.fillStyle = 'bisque';
+      ctx.fillRect(0,0,width,height);
+
+      // blue line at playhead
+      const playheadPos = width * curtime / totaltime;
+      ctx.fillStyle = 'cornflowerblue';
+      ctx.fillRect(playheadPos-3, 0, 6, height);
+
+      // print out the current time
+      const curtimeStr = formatTime(curtime,":");
+      ctx.font = '26px serif';
+      const curtimeMet = ctx.measureText(curtimeStr);
+      //const curSpareVert = height - curtimeMet.fontBoundingBoxAscent;
+      ctx.fillText(curtimeStr, Math.max(0, Math.min(width-curtimeMet.width, playheadPos + 6)), height - 4);
+
+      // red lines at markers
+      const marker_times = markers.time
+      function drawMarkerLine(marker_time) {
+        const markerPos = width * marker_time / totaltime;
+        ctx.font = '26px serif';
+        ctx.fillStyle = 'indianred';
+        ctx.fillRect(markerPos-3, 0, 6, height);
+      }
+      marker_times.map(drawMarkerLine);
+
+      // If hovering over marker readout its time
+      if (isHovering) {
+        const marker_time = marker_times.closestTo(whereHovering * totaltime);
+        if ((Math.abs(marker_time - whereHovering * totaltime) / totaltime) < 0.01) {
+          const hoverMarkerPos = width * marker_time / totaltime;
+          const marktimeStr = formatTime(marker_time,":");
+          const marktimeMet = ctx.measureText(marktimeStr);
+          //const markSpareVert = height - marktimeMet.fontBoundingBoxAscent;
+          //ctx.fillText(marktimeStr, Math.max(0, Math.min(width-marktimeMet.width, hoverMarkerPos - marktimeMet.width/2)), height - (markSpareVert / 2));
+          ctx.fillText(marktimeStr, Math.max(0, Math.min(width-marktimeMet.width, hoverMarkerPos + 6)), height - 27);
+        }
+      }
+
+      // If video is seeking, then print a message to that effect on the scrubber
+      if (isSeeking) {
+        const bufferingStr = "buffering ...";
+        ctx.font = '44px serif';
+        ctx.fillStyle = 'cornflowerblue';
+        const bufstrMet = ctx.measureText(bufferingStr);
+        ctx.fillText(bufferingStr, (width / 2) - bufstrMet.width / 2, height - 10);
+      }
+
+    }
+
+
+    // Main output of the htmlwidget factory is a renderValue function
     return {
 
       renderValue: function(x) {
 
-        // TODO: code to render the widget, e.g.
-        //el.innerText = x.message;
-        el.innerHTML = "<div class='grid-container'><div class='grid-item'><canvas id='glcanvas' width='1920px' height='1080px'></canvas></div><div class='grid-item'><div class='slidecontainer'><input type='range' min='0' max='1' value='0' step='any' class='slider' id='" + x.videoName + "_playhead'></div></div></div>";
-        const canvas = document.querySelector('#glcanvas');
-        const gl = canvas.getContext('webgl');
-        canvas.style.width = '100%';
-        canvas.style.height = 'auto';
+        // Convert video markup from long format to wide format
+        //var videoComments = HTMLWidgets.dataframeToD3(x.videoComments);
+        //var markers = document.createElement('datalist');
+        //markers.id = x.videoName + "_markers"
+        var videoMarkers = x.videoMarkers;
+
+        // The main html for the widget
+        const generatedHTML = `
+          <div class='grid-container'>
+            <div class='grid-item'>
+              <canvas id='glcanvas' width='1920px' height='1080px'></canvas>
+            </div>
+            <div class='grid-item'>
+              <canvas id='${x.videoName}_scrubber' width='1920px' height='50px'></canvas>
+            </div>
+          </div>
+          `;
+        el.innerHTML = generatedHTML;
+
+        // Video canvas
+        const videoCanvas = document.querySelector('#glcanvas');
+        const gl = videoCanvas.getContext('webgl');
+        videoCanvas.style.width = '100%';
+        videoCanvas.style.height = 'auto';
 
         // If we don't have a GL context, give up now
-        if (!gl) { alert('Unable to initialize WebGL. Your browser or machine may not support it.'); return; }
+        if (!gl) { alert('Unable to initialize WebGL.'); return; }
 
-        // The playback time slider
-        const timeSlider = document.getElementById(x.videoName + '_playhead')
+        // Scrubber canvas
+        const scrubberCanvas = document.querySelector('#' + x.videoName + '_scrubber');
+        const scrubberContext = scrubberCanvas.getContext('2d');
+        scrubberCanvas.style.width = '100%';
+        scrubberCanvas.style.height = 'auto';
 
       	// The video
       	const video = setupVideo(x.videoURL, x.videoName);
         video.style.display = 'none';
-      	canvas.appendChild(video);
+      	videoCanvas.appendChild(video);
       	togglePlayback = function() {
       		if (video.paused) {
       			frameByFrame = false;
@@ -411,7 +533,7 @@ HTMLWidgets.widget({
 
       	  video.addEventListener('timeupdate', function() {
       	     timeupdate = true;
-      	     timeSlider.value = video.currentTime / video.duration;
+      	     //timeSlider.value = video.currentTime / video.duration;
       	     checkReady();
       	  }, true);
 
@@ -426,31 +548,23 @@ HTMLWidgets.widget({
       	  return video;
       	}
 
-      	//function setupSFX(url) {
-      	//	const sfx = document.createElement('audio');
-      	//	sfx.src = url;
-      	//	sfx.autoplay = false;
-        //
-      	//	return sfx;
-      	//};
-      	//const sfx = setupSFX('camera_shutter.mp3');
 
       	// Event handling
-      	mousedownHandler = function(evt) {
-      		old_poi = getMouseNDC(canvas,evt);
-      		panClickPoint = getMouseNDC(canvas,evt);
+      	mousedownVideoCanvas = function(evt) {
+      		old_poi = getMouseNDC(videoCanvas,evt);
+      		panClickPoint = getMouseNDC(videoCanvas,evt);
       		panning = true;
       		console.log("Starting pan from " + panClickPoint.x + ", " + panClickPoint.y);
       	};
 
-      	mouseupHandler = function(evt) {
+      	mouseupVideoCanvas = function(evt) {
       		panning = false;
       	};
 
-      	mousemoveHandler = function(evt) {
+      	mousemoveVideoCanvas = function(evt) {
       		if (panning) {
       			evt.preventDefault();
-      			currentMouse = getMouseNDC(canvas,evt);
+      			currentMouse = getMouseNDC(videoCanvas,evt);
       			poi.x = old_poi.x - (currentMouse.x - panClickPoint.x)/zoom;
       			poi.y = old_poi.y - (currentMouse.y - panClickPoint.y)/zoom;
       		}
@@ -463,39 +577,65 @@ HTMLWidgets.widget({
       		else if (evt.key == "ArrowLeft") { if (video.paused) nudge(-1/30); else nudge(-1.0); }
       		else if (evt.key == "F13") { capture = true; }
       		else if (evt.key == "d") { evt.preventDefault(); toggleSubtractPrevFrame();  }
+      		else if (evt.key == "Enter") { videoMarkers = addMarker(videoMarkers, video.currentTime);  }
       		else { console.log(evt); }
       	};
 
+        //ignoreKeyboardHandler = function(evt) {
+        //  evt.preventDefault();
+        //  if(evt.type == "keydown") { keydownHandler(evt); }
+        //}
 
-        ignoreKeyboardHandler = function(evt) {
-          evt.preventDefault();
-          if(evt.type == "keydown") { keydownHandler(evt); }
-        }
-
-
-      	wheelHandler = function(evt) {
+      	wheelVideoCanvas = function(evt) {
       		evt.preventDefault();
       		console.log(evt);
-      		poi = getMouseNDC(canvas,evt);
+      		poi = getMouseNDC(videoCanvas,evt);
       		zoom *= (1 - Math.max(-0.5,Math.min(0.5, (evt.deltaY / 250))));
       		zoom = Math.max(zoom, 1.0);
       	};
 
-        timeSliderHandler = function(evt) {
-          var newtime = video.duration * timeSlider.value
-          console.log("Scrubbing to " + newtime)
-          video.currentTime = newtime
+        //timeSliderHandler = function(evt) {
+        //  var newtime = video.duration * timeSlider.value
+        //  console.log("Scrubbing to " + newtime)
+        //  video.currentTime = newtime
+        //};
+
+        mousedownScrubberCanvas = function(evt) {
+      		scrubClickPoint = getMouseTextureCoord(scrubberCanvas,evt);
+          var newtime = video.duration * scrubClickPoint.x;
+          console.log("Scrubbing to " + newtime);
+          video.currentTime = newtime;
+      	};
+
+      	//mouseupScrubberCanvas = function(evt) {};
+        mouseenterScrubberCanvas = function(evt) {
+          hoveringOverScrubber = true;
         }
 
+        mouseleaveScrubberCanvas = function(evt) {
+          hoveringOverScrubber = false;
+        }
+
+      	mousemoveScrubberCanvas = function(evt) {
+      		hoverPoint = getMouseTextureCoord(scrubberCanvas,evt).x;
+      	};
+
       	document.addEventListener('keydown', keydownHandler);
-      	canvas.addEventListener('wheel', wheelHandler);
-      	canvas.addEventListener('mousedown', mousedownHandler);
-      	canvas.addEventListener('mouseup', mouseupHandler);
-      	canvas.addEventListener('mousemove', mousemoveHandler);
-        timeSlider.addEventListener('change', timeSliderHandler);
-        timeSlider.addEventListener('keydown', ignoreKeyboardHandler);
-        timeSlider.addEventListener('keyup', ignoreKeyboardHandler);
-        timeSlider.addEventListener('keypress', ignoreKeyboardHandler);
+      	videoCanvas.addEventListener('wheel', wheelVideoCanvas);
+      	videoCanvas.addEventListener('mousedown', mousedownVideoCanvas);
+      	videoCanvas.addEventListener('mouseup', mouseupVideoCanvas);
+      	videoCanvas.addEventListener('mousemove', mousemoveVideoCanvas);
+
+      	scrubberCanvas.addEventListener('mousedown', mousedownScrubberCanvas);
+      	//scrubberCanvas.addEventListener('mouseup', mouseupScrubberCanvas);
+      	scrubberCanvas.addEventListener('mousemove', mousemoveScrubberCanvas);
+      	scrubberCanvas.addEventListener('mouseenter', mouseenterScrubberCanvas);
+      	scrubberCanvas.addEventListener('mouseleave', mouseleaveScrubberCanvas);
+
+        //timeSlider.addEventListener('change', timeSliderHandler);
+        //timeSlider.addEventListener('keydown', ignoreKeyboardHandler);
+        //timeSlider.addEventListener('keyup', ignoreKeyboardHandler);
+        //timeSlider.addEventListener('keypress', ignoreKeyboardHandler);
 
         // Vertex shader program
         const vsSource = `
@@ -518,15 +658,27 @@ HTMLWidgets.widget({
           varying highp vec2 vTextureCoord;
       		uniform sampler2D uCurrFrame;
       		uniform sampler2D uPrevFrame;
+          uniform lowp float uOverlayAlpha;
+          uniform lowp float uNoizeSeed;
+
+      		lowp float rand(lowp vec2 co) {
+            return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+          }
 
       		void main() {
       			highp vec4 currTexelColor = texture2D(uCurrFrame, vTextureCoord);
       			highp vec4 prevTexelColor = texture2D(uPrevFrame, vTextureCoord);
-            gl_FragColor = vec4(
-      				abs(currTexelColor.r - prevTexelColor.r),
-      				abs(currTexelColor.g - prevTexelColor.g),
-      				abs(currTexelColor.b - prevTexelColor.b),
-      				1.0);
+
+      			if (uOverlayAlpha > 0.5) {
+      			  highp float noize = rand(vTextureCoord * uNoizeSeed) * uOverlayAlpha;
+              gl_FragColor = vec4(noize,noize,noize,1.0);
+      			} else {
+      			   gl_FragColor = vec4(
+      				  abs(currTexelColor.r - prevTexelColor.r),
+      				  abs(currTexelColor.g - prevTexelColor.g),
+      				  abs(currTexelColor.b - prevTexelColor.b),
+      				  1.0);
+      			}
           }
         `;
 
@@ -548,6 +700,8 @@ HTMLWidgets.widget({
             modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
       			currFrame: gl.getUniformLocation(shaderProgram, 'uCurrFrame'),
       			prevFrame: gl.getUniformLocation(shaderProgram, 'uPrevFrame'),
+      			overlayAlpha: gl.getUniformLocation(shaderProgram, 'uOverlayAlpha'),
+      			noizeSeed: gl.getUniformLocation(shaderProgram, 'uNoizeSeed'),
           },
         };
 
@@ -575,16 +729,18 @@ HTMLWidgets.widget({
           then = now;
 
           // Read in the next video frame
-      		if (copyVideo && !video.seeking) { updateTexture(gl, currFrameTexture, video); }
+      		if (copyVideo && !video.seeking) { noizeOverlay = false; updateTexture(gl, currFrameTexture, video); }
+      		else { noizeOverlay = true; }
 
       		// draw the scene
           drawScene(gl, programInfo, buffers, currFrameTexture, prevFrameTexture, deltaTime);
+          drawScrubber(scrubberCanvas, scrubberContext, videoMarkers, video.currentTime, video.duration, hoveringOverScrubber, hoverPoint, ((!copyVideo) || video.seeking));
 
           if (capture) {
             capture = false;
             //var data = canvas.toDataURL("image/png", 1);
             //document.getElementById('snapshot').setAttribute('src', data);
-            canvas.toBlob(function(blob) {
+            videoCanvas.toBlob(function(blob) {
               saveAs(blob, extractMainIdentifier(x.videoURL) + "_" + formatTime(video.currentTime) + ".png");
             });
           }
@@ -603,6 +759,7 @@ HTMLWidgets.widget({
       	// Start the main rendering loop
       	requestAnimationFrame(render);
 	    },
+
 
       resize: function(width, height) {
 

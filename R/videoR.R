@@ -5,14 +5,13 @@
 #' @import htmlwidgets
 #'
 #' @export
-videoR <- function(videoURL, videoName, start_time=0, end_time=-1, width = NULL, height = NULL, elementId = NULL) {
+videoR <- function(videoURL, videoName, videoMarkers, width = NULL, height = NULL, elementId = NULL) {
 
   # forward options using x
   x = list(
     videoURL = videoURL,
     videoName = videoName,
-    start_time = start_time,
-    end_time = end_time
+    videoMarkers = videoMarkers
   )
 
   # put in some meta tags

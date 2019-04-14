@@ -459,10 +459,7 @@ HTMLWidgets.widget({
 
       renderValue: function(x) {
 
-        // Convert video markup from long format to wide format
-        //var videoComments = HTMLWidgets.dataframeToD3(x.videoComments);
-        //var markers = document.createElement('datalist');
-        //markers.id = x.videoName + "_markers"
+        // Comments on the video passed in from R
         var videoMarkers = x.videoMarkers;
 
         // The main html for the widget
@@ -578,7 +575,13 @@ HTMLWidgets.widget({
       		else if (evt.key == "ArrowLeft") { if (video.paused) nudge(-1/30); else nudge(-1.0); }
       		else if (evt.key == "F13") { capture = true; }
       		else if (evt.key == "d") { evt.preventDefault(); toggleSubtractPrevFrame();  }
-      		else if (evt.key == "Enter") { videoMarkers = addMarker(videoMarkers, video.currentTime);  }
+      		else if (evt.key == "Enter") {
+      		  videoMarkers = addMarker(videoMarkers, video.currentTime);
+      		  // If embedded in Shiny app, let it know about new markers
+            if (HTMLWidgets.shinyMode) {
+              Shiny.onInputChange("markers", videoMarkers);
+            }
+      		}
       		else { console.log(evt); }
       	};
 

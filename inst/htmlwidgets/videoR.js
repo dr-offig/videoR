@@ -36,8 +36,8 @@ HTMLWidgets.widget({
           var tmpVal = Infinity;
           var tmpInd = -1;
           for (var i=0; i<N; i++) {
-            var val = this[i];
-            if (Math.abs(x-val) < tmpVal) {
+            var val = Math.abs(this[i]-x);
+            if (val < tmpVal) {
               tmpInd = i;
               tmpVal = val;
             }
@@ -419,14 +419,14 @@ HTMLWidgets.widget({
       // If hovering over marker readout its time
       if (isHovering) {
         const marker_time = marker_times.closestTo(whereHovering * totaltime);
-        //if ((Math.abs(marker_time - whereHovering * totaltime) / totaltime) < 0.01) {
+        if ((Math.abs(marker_time - whereHovering * totaltime) / totaltime) < 0.01) {
           const hoverMarkerPos = width * marker_time / totaltime;
           const marktimeStr = formatTime(marker_time,":");
           const marktimeMet = ctx.measureText(marktimeStr);
           //const markSpareVert = height - marktimeMet.fontBoundingBoxAscent;
           //ctx.fillText(marktimeStr, Math.max(0, Math.min(width-marktimeMet.width, hoverMarkerPos - marktimeMet.width/2)), height - (markSpareVert / 2));
           ctx.fillText(marktimeStr, Math.max(0, Math.min(width-marktimeMet.width, hoverMarkerPos + 6)), height - 27);
-        //}
+        }
       }
 
       // If video is seeking, then print a message to that effect on the scrubber
@@ -555,7 +555,7 @@ HTMLWidgets.widget({
       		old_poi = getMouseNDC(videoCanvas,evt);
       		panClickPoint = getMouseNDC(videoCanvas,evt);
       		panning = true;
-      		console.log("Starting pan from " + panClickPoint.x + ", " + panClickPoint.y);
+      		//console.log("Starting pan from " + panClickPoint.x + ", " + panClickPoint.y);
       	};
 
       	mouseupVideoCanvas = function(evt) {
@@ -589,7 +589,7 @@ HTMLWidgets.widget({
 
       	wheelVideoCanvas = function(evt) {
       		evt.preventDefault();
-      		console.log(evt);
+      		//console.log(evt);
       		poi = getMouseNDC(videoCanvas,evt);
       		zoom *= (1 - Math.max(-0.5,Math.min(0.5, (evt.deltaY / 250))));
       		zoom = Math.max(zoom, 1.0);

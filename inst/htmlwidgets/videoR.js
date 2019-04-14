@@ -70,7 +70,9 @@ HTMLWidgets.widget({
       const columns = Object.entries(markers);
       for (var i = 0; i < columns.length; i++) {
         var column = columns[i];
-        if (column[0] === "time") { column[1].push(t); } else { column[1].push(null); }
+        if (column[0] === "time") { column[1].push(t); }
+        else if (column[0] === "comment") { column[1].push(""); }
+        else { column[1].push(null); }
       }
       return markers;
     };

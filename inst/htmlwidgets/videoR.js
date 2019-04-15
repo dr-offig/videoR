@@ -409,7 +409,7 @@ HTMLWidgets.widget({
 
 
     // Rendering logic for the video timeline scrubber
-    function drawScrubber(canvas, ctx, markers, curtime, totaltime, isHovering, whereHovering, isSeeking) {
+    function drawScrubber(canvas, ctx, markers, curtime, totaltime, isHovering, whereHovering, isSeeking, isMuted) {
       const width = canvas.width;
       const height = canvas.height;
 
@@ -447,6 +447,12 @@ HTMLWidgets.widget({
         ctx.fillStyle = 'cornflowerblue';
         const bufstrMet = ctx.measureText(bufferingStr);
         ctx.fillText(bufferingStr, (width / 2) - bufstrMet.width / 2, height - 10);
+      } else if (isMuted) {
+        const bufferingStr = "audio muted ... click on video to unmute";
+        ctx.font = '44px serif';
+        ctx.fillStyle = 'cornflowerblue';
+        const bufstrMet = ctx.measureText(bufferingStr);
+        ctx.fillText(bufferingStr, width - (bufstrMet.width + 10) , height - 10);
       }
 
       // blue line at playhead
@@ -477,17 +483,17 @@ HTMLWidgets.widget({
         const generatedHTML = `
           <div class='grid-container'>
             <div class='grid-item'>
-              <canvas id='glcanvas' width='1920px' height='1080px'></canvas>
+              <canvas id='glcanvas' width='1920px' height='1080px' tabindex='0'></canvas>
             </div>
             <div class='grid-item'>
-              <canvas id='${x.videoName}_scrubber' width='1920px' height='50px'></canvas>
+              <canvas id='${x.videoName}_scrubber' width='1920px' height='50px' tabindex='0'></canvas>
             </div>
           </div>
           `;
         el.innerHTML = generatedHTML;
 
         // Video canvas
-        const videoCanvas = document.querySelector('#glcanvas');
+        const videoCanvas = el.querySelector('#glcanvas');
         const gl = videoCanvas.getContext('webgl');
         videoCanvas.style.width = '100%';
         videoCanvas.style.height = 'auto';
@@ -496,7 +502,7 @@ HTMLWidgets.widget({
         if (!gl) { alert('Unable to initialize WebGL.'); return; }
 
         // Scrubber canvas
-        const scrubberCanvas = document.querySelector('#' + x.videoName + '_scrubber');
+        const scrubberCanvas = el.querySelector('#' + x.videoName + '_scrubber');
         const scrubberContext = scrubberCanvas.getContext('2d');
         scrubberCanvas.style.width = '100%';
         scrubberCanvas.style.height = 'auto';
@@ -514,6 +520,10 @@ HTMLWidgets.widget({
       		}
       	};
 
+        unmute = function() {
+          video.muted = false;
+        };
+
       	showNextFrame = function() {
       		frameByFrame = true;
       		video.play();
@@ -529,7 +539,7 @@ HTMLWidgets.widget({
       	  var timeupdate = false;
 
       	  video.autoplay = true;
-      	  video.muted = false;
+      	  video.muted = true;
       	  video.loop = true;
 
       	  // Waiting for these 2 events ensures
@@ -548,7 +558,7 @@ HTMLWidgets.widget({
 
       	  video.src = url;
 
-      	  video.play();
+      	  //video.play();
 
       	  function checkReady() {
       	    if (playing && timeupdate) {
@@ -560,6 +570,7 @@ HTMLWidgets.widget({
 
       	// Event handling
       	mousedownVideoCanvas = function(evt) {
+      		unmute();
       		old_poi = getMouseNDC(videoCanvas,evt);
       		panClickPoint = getMouseNDC(videoCanvas,evt);
       		panning = true;
@@ -579,7 +590,8 @@ HTMLWidgets.widget({
       		}
       	};
 
-      	keydownHandler = function(evt) {
+      	keydownVideoCanvas = function(evt) {
+          unmute();
           if (evt.key == "0") { resetZoomAndPan(); }
        		else if (evt.key == " ") { evt.preventDefault(); togglePlayback(); }
       		else if (evt.key == "ArrowRight") { if (video.paused) showNextFrame(); else nudge(1.0); }
@@ -593,7 +605,7 @@ HTMLWidgets.widget({
               Shiny.onInputChange("markers", videoMarkers);
             }
       		}
-      		else { console.log(evt); }
+
       	};
 
         //ignoreKeyboardHandler = function(evt) {
@@ -635,7 +647,7 @@ HTMLWidgets.widget({
       		hoverPoint = getMouseTextureCoord(scrubberCanvas,evt).x;
       	};
 
-      	document.addEventListener('keydown', keydownHandler);
+      	videoCanvas.addEventListener('keydown', keydownVideoCanvas);
       	videoCanvas.addEventListener('wheel', wheelVideoCanvas);
       	videoCanvas.addEventListener('mousedown', mousedownVideoCanvas);
       	videoCanvas.addEventListener('mouseup', mouseupVideoCanvas);
@@ -749,7 +761,8 @@ HTMLWidgets.widget({
 
       		// draw the scene
           drawScene(gl, programInfo, buffers, currFrameTexture, prevFrameTexture, deltaTime);
-          drawScrubber(scrubberCanvas, scrubberContext, videoMarkers, video.currentTime, video.duration, hoveringOverScrubber, hoverPoint, ((!copyVideo) || video.seeking));
+          drawScrubber( scrubberCanvas, scrubberContext, videoMarkers, video.currentTime, video.duration,
+                        hoveringOverScrubber, hoverPoint, (!copyVideo) || video.seeking, video.muted);
 
           if (capture) {
             capture = false;

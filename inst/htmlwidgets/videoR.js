@@ -25,6 +25,7 @@ HTMLWidgets.widget({
       };
     }
 
+
     //////// ybot ////////
     if (!Array.prototype.closestTo) {
       Array.prototype.closestTo = function closestTo(x) {

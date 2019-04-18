@@ -76,15 +76,23 @@ HTMLWidgets.widget({
       //  else { column[1].push(null); }
       //}
       //return markers;
-      var times = markers.time;
-      var comments = markers.comment;
-      times.push(t);
-      comments.push(commentStr);
-      return {
-                time: times,
-                comment: comments
-             };
+      var times;
+      var comments;
 
+      if (markers !== null) {
+        times = markers.time;
+        comments = markers.comment;
+        times.push(t);
+        comments.push(commentStr);
+      } else {
+        times = [time];
+        comments= [comment];
+      }
+
+      return {
+              time: times,
+              comment: comments
+             };
     };
 
     // TODO: define shared variables for this instance
@@ -419,26 +427,29 @@ HTMLWidgets.widget({
       ctx.fillRect(0,0,width,height);
 
       // red lines at markers
-      const marker_times = markers.time
-      function drawMarkerLine(marker_time) {
-        const markerPos = width * marker_time / totaltime;
-        ctx.font = '26px serif';
-        ctx.fillStyle = 'indianred';
-        ctx.fillRect(markerPos-3, 0, 6, height);
-      }
-      marker_times.map(drawMarkerLine);
-
-      // If hovering over marker readout its time
-      if (isHovering) {
-        const marker_time = marker_times.closestTo(whereHovering * totaltime);
-        if ((Math.abs(marker_time - whereHovering * totaltime) / totaltime) < 0.01) {
-          const hoverMarkerPos = width * marker_time / totaltime;
-          const marktimeStr = formatTime(marker_time,":");
-          const marktimeMet = ctx.measureText(marktimeStr);
-          //const markSpareVert = height - marktimeMet.fontBoundingBoxAscent;
-          //ctx.fillText(marktimeStr, Math.max(0, Math.min(width-marktimeMet.width, hoverMarkerPos - marktimeMet.width/2)), height - (markSpareVert / 2));
-          ctx.fillText(marktimeStr, Math.max(0, Math.min(width-marktimeMet.width, hoverMarkerPos + 6)), height - 27);
+      if (markers !== null) {
+        const marker_times = markers.time
+        function drawMarkerLine(marker_time) {
+          const markerPos = width * marker_time / totaltime;
+          ctx.font = '26px serif';
+          ctx.fillStyle = 'indianred';
+          ctx.fillRect(markerPos-3, 0, 6, height);
         }
+        marker_times.map(drawMarkerLine);
+
+        // If hovering over marker readout its time
+        if (isHovering) {
+          const marker_time = marker_times.closestTo(whereHovering * totaltime);
+          if ((Math.abs(marker_time - whereHovering * totaltime) / totaltime) < 0.01) {
+            const hoverMarkerPos = width * marker_time / totaltime;
+            const marktimeStr = formatTime(marker_time,":");
+            const marktimeMet = ctx.measureText(marktimeStr);
+            //const markSpareVert = height - marktimeMet.fontBoundingBoxAscent;
+            //ctx.fillText(marktimeStr, Math.max(0, Math.min(width-marktimeMet.width, hoverMarkerPos - marktimeMet.width/2)), height - (markSpareVert / 2));
+            ctx.fillText(marktimeStr, Math.max(0, Math.min(width-marktimeMet.width, hoverMarkerPos + 6)), height - 27);
+          }
+        }
+
       }
 
       // If video is seeking, then print a message to that effect on the scrubber

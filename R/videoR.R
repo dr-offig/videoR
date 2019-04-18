@@ -5,7 +5,7 @@
 #' @import htmlwidgets
 #'
 #' @export
-videoR <- function(videoURL, videoName, videoMarkers, width = NULL, height = NULL, elementId = NULL) {
+videoR <- function(videoURL, videoName, videoMarkers=NULL, width = NULL, height = NULL, elementId = NULL) {
 
   # forward options using x
   x = list(

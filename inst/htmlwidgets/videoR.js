@@ -487,7 +487,7 @@ HTMLWidgets.widget({
               <canvas id='glcanvas' width='1920px' height='1080px' tabindex='0'></canvas>
             </div>
             <div class='grid-item'>
-              <canvas id='${x.videoName}_scrubber' width='1920px' height='50px' tabindex='0'></canvas>
+              <canvas id='scrubber_${x.videoName}' width='1920px' height='50px' tabindex='0'></canvas>
             </div>
           </div>
           `;
@@ -503,7 +503,7 @@ HTMLWidgets.widget({
         if (!gl) { alert('Unable to initialize WebGL.'); return; }
 
         // Scrubber canvas
-        const scrubberCanvas = el.querySelector('#' + x.videoName + '_scrubber');
+        const scrubberCanvas = el.querySelector('#scrubber_' + x.videoName);
         const scrubberContext = scrubberCanvas.getContext('2d');
         scrubberCanvas.style.width = '100%';
         scrubberCanvas.style.height = 'auto';

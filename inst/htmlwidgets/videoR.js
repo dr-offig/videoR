@@ -85,14 +85,12 @@ HTMLWidgets.widget({
         times.push(t);
         comments.push(commentStr);
       } else {
-        times = [time];
-        comments= [comment];
+        times = [t];
+        comments= [commentStr];
       }
 
-      return {
-              time: times,
-              comment: comments
-             };
+      const output = { time: times, comment: comments };
+      return output;
     };
 
     // TODO: define shared variables for this instance
@@ -433,7 +431,7 @@ HTMLWidgets.widget({
           const markerPos = width * marker_time / totaltime;
           ctx.font = '26px serif';
           ctx.fillStyle = 'indianred';
-          ctx.fillRect(markerPos-3, 0, 6, height);
+          ctx.fillRect(markerPos-1, 0, 2, height);
         }
         marker_times.map(drawMarkerLine);
 
@@ -470,7 +468,7 @@ HTMLWidgets.widget({
       // blue line at playhead
       const playheadPos = width * curtime / totaltime;
       ctx.fillStyle = 'cornflowerblue';
-      ctx.fillRect(playheadPos-3, 0, 6, height);
+      ctx.fillRect(playheadPos-2, 0, 4, height);
 
       // print out the current time
       const curtimeStr = formatTime(curtime,":");
@@ -665,6 +663,7 @@ HTMLWidgets.widget({
       	videoCanvas.addEventListener('mouseup', mouseupVideoCanvas);
       	videoCanvas.addEventListener('mousemove', mousemoveVideoCanvas);
 
+        scrubberCanvas.addEventListener('keydown', keydownVideoCanvas);
       	scrubberCanvas.addEventListener('mousedown', mousedownScrubberCanvas);
       	//scrubberCanvas.addEventListener('mouseup', mouseupScrubberCanvas);
       	scrubberCanvas.addEventListener('mousemove', mousemoveScrubberCanvas);

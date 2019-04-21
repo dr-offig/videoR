@@ -517,6 +517,7 @@ HTMLWidgets.widget({
             function(newMarkers) {
               videoMarkers = newMarkers
               console.log("Setting markes to: " + newMarkers)
+              Shiny.onInputChange("markers", videoMarkers);
             })
         };
 

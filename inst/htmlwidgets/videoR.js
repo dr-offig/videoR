@@ -48,6 +48,28 @@ HTMLWidgets.widget({
       };
     }
 
+
+    if (!Array.prototype.indexOfClosestTo) {
+      Array.prototype.indexOfClosestTo = function indexOfClosestTo(x) {
+        //var dists = this.map(function(a) { Math.abs(a - x); });
+        const N = this.length;
+        if (N === 0) {
+          return NaN;
+        } else {
+          var tmpVal = Infinity;
+          var tmpInd = -1;
+          for (var i=0; i<N; i++) {
+            var val = Math.abs(this[i]-x);
+            if (val < tmpVal) {
+              tmpInd = i;
+              tmpVal = val;
+            }
+          }
+          return tmpInd;
+        }
+      };
+    }
+
     /////////////////////////////////////////////
 
     formatTime = function(secs, sep="-") {
@@ -489,6 +511,12 @@ HTMLWidgets.widget({
         // Comments on the video passed in from R
         var videoMarkers = x.videoMarkers;
 
+         // If embedded in Shiny app, listen for changes to markers from Shiny
+        if (HTMLWidgets.shinyMode) {
+            Shiny.addCustomMessageHandler("updateMarkers",
+            function(newMarkers) { videoMarkers <- newMarkers }
+        });
+
         // The main html for the widget
         const generatedHTML = `
           <div class='grid-container'>
@@ -540,6 +568,32 @@ HTMLWidgets.widget({
       	};
 
       	nudge = function(amt) { video.currentTime += amt; };
+
+        gotoNextMarker = function() {
+          if (videoMarkers !== null) {
+            times = videoMarkers.time;
+            candInd = times.indexOfClosestTo(video.currentTime);
+            if (0 <= candInd && candInd < times.length && video.currentTime < times[[candInd]]) {
+              video.currentTime = times[[candInd]];
+            } else if (0 <= candInd && candInd < (times.length - 1)) {
+              video.currentTime = times[[candInd+1]];
+            }
+          }
+        }
+
+
+        gotoPreviousMarker = function() {
+          if (videoMarkers !== null) {
+            times = videoMarkers.time;
+            candInd = times.indexOfClosestTo(video.currentTime);
+            if (video.currentTime > times[[candInd]]) {
+              video.currentTime = times[[candInd]];
+            } else if (candInd > 0) {
+              video.currentTime = times[[candInd-1]];
+            }
+          }
+        }
+
 
       	function setupVideo(url,name) {
       	  const video = document.createElement('video');
@@ -600,12 +654,18 @@ HTMLWidgets.widget({
       		}
       	};
 
-      	keydownVideoCanvas = function(evt) {
+      	keydownEitherCanvas = function(evt) {
           unmute();
           if (evt.key == "0") { resetZoomAndPan(); }
        		else if (evt.key == " ") { evt.preventDefault(); togglePlayback(); }
-      		else if (evt.key == "ArrowRight") { if (video.paused) showNextFrame(); else nudge(1.0); }
-      		else if (evt.key == "ArrowLeft") { if (video.paused) nudge(-1/30); else nudge(-1.0); }
+      		else if (evt.key == "ArrowRight") {
+      		  if (evt.shiftKey) { gotoNextMarker(); }
+      		  else { if (video.paused) showNextFrame(); else nudge(1.0); }
+      		}
+      		else if (evt.key == "ArrowLeft") {
+      		  if (evt.shiftKey) { gotoPreviousMarker(); }
+      		  else { if (video.paused) nudge(-1/30); else nudge(-1.0); }
+      		}
       		else if (evt.key == "F13") { capture = true; }
       		else if (evt.key == "d") { evt.preventDefault(); toggleSubtractPrevFrame();  }
       		else if (evt.key == "Enter") {
@@ -615,13 +675,7 @@ HTMLWidgets.widget({
               Shiny.onInputChange("markers", videoMarkers);
             }
       		}
-
       	};
-
-        //ignoreKeyboardHandler = function(evt) {
-        //  evt.preventDefault();
-        //  if(evt.type == "keydown") { keydownHandler(evt); }
-        //}
 
       	wheelVideoCanvas = function(evt) {
       		evt.preventDefault();
@@ -630,12 +684,6 @@ HTMLWidgets.widget({
       		zoom *= (1 - Math.max(-0.5,Math.min(0.5, (evt.deltaY / 250))));
       		zoom = Math.max(zoom, 1.0);
       	};
-
-        //timeSliderHandler = function(evt) {
-        //  var newtime = video.duration * timeSlider.value
-        //  console.log("Scrubbing to " + newtime)
-        //  video.currentTime = newtime
-        //};
 
         mousedownScrubberCanvas = function(evt) {
       		scrubClickPoint = getMouseTextureCoord(scrubberCanvas,evt);
@@ -657,23 +705,18 @@ HTMLWidgets.widget({
       		hoverPoint = getMouseTextureCoord(scrubberCanvas,evt).x;
       	};
 
-      	videoCanvas.addEventListener('keydown', keydownVideoCanvas);
+      	videoCanvas.addEventListener('keydown', keydownEitherCanvas);
       	videoCanvas.addEventListener('wheel', wheelVideoCanvas);
       	videoCanvas.addEventListener('mousedown', mousedownVideoCanvas);
       	videoCanvas.addEventListener('mouseup', mouseupVideoCanvas);
       	videoCanvas.addEventListener('mousemove', mousemoveVideoCanvas);
 
-        scrubberCanvas.addEventListener('keydown', keydownVideoCanvas);
+        scrubberCanvas.addEventListener('keydown', keydownEitherCanvas);
       	scrubberCanvas.addEventListener('mousedown', mousedownScrubberCanvas);
       	//scrubberCanvas.addEventListener('mouseup', mouseupScrubberCanvas);
       	scrubberCanvas.addEventListener('mousemove', mousemoveScrubberCanvas);
       	scrubberCanvas.addEventListener('mouseenter', mouseenterScrubberCanvas);
       	scrubberCanvas.addEventListener('mouseleave', mouseleaveScrubberCanvas);
-
-        //timeSlider.addEventListener('change', timeSliderHandler);
-        //timeSlider.addEventListener('keydown', ignoreKeyboardHandler);
-        //timeSlider.addEventListener('keyup', ignoreKeyboardHandler);
-        //timeSlider.addEventListener('keypress', ignoreKeyboardHandler);
 
         // Vertex shader program
         const vsSource = `

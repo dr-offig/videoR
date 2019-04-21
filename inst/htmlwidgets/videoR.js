@@ -514,7 +514,9 @@ HTMLWidgets.widget({
          // If embedded in Shiny app, listen for changes to markers from Shiny
         if (HTMLWidgets.shinyMode) {
             Shiny.addCustomMessageHandler("updateMarkers",
-            function(newMarkers) { videoMarkers <- newMarkers }
+            function(newMarkers) {
+              videoMarkers = newMarkers
+            }
         });
 
         // The main html for the widget

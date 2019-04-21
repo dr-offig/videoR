@@ -516,6 +516,7 @@ HTMLWidgets.widget({
             Shiny.addCustomMessageHandler("updateMarkers",
             function(newMarkers) {
               videoMarkers = newMarkers
+              console.log("Setting markes to: " + newMarkers)
             }
         });
 

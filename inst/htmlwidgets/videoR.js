@@ -517,8 +517,8 @@ HTMLWidgets.widget({
             function(newMarkers) {
               videoMarkers = newMarkers
               console.log("Setting markes to: " + newMarkers)
-            }
-        });
+            })
+        };
 
         // The main html for the widget
         const generatedHTML = `

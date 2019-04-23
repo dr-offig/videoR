@@ -516,7 +516,7 @@ HTMLWidgets.widget({
             Shiny.addCustomMessageHandler("updateMarkers",
             function(newMarkers) {
               videoMarkers = newMarkers
-              console.log("Setting markes to: " + newMarkers)
+              console.log("Setting markers times to: " + newMarkers.time)
               //Shiny.onInputChange("markers", videoMarkers);
             })
         };
@@ -660,8 +660,9 @@ HTMLWidgets.widget({
 
       	keydownEitherCanvas = function(evt) {
           unmute();
+          evt.preventDefault();
           if (evt.key == "0") { resetZoomAndPan(); }
-       		else if (evt.key == " ") { evt.preventDefault(); togglePlayback(); }
+       		else if (evt.key == " ") { togglePlayback(); }
       		else if (evt.key == "ArrowRight") {
       		  if (evt.shiftKey) { gotoNextMarker(); }
       		  else { if (video.paused) showNextFrame(); else nudge(1.0); }
@@ -671,7 +672,7 @@ HTMLWidgets.widget({
       		  else { if (video.paused) nudge(-1/30); else nudge(-1.0); }
       		}
       		else if (evt.key == "F13") { capture = true; }
-      		else if (evt.key == "d") { evt.preventDefault(); toggleSubtractPrevFrame();  }
+      		else if (evt.key == "d") {toggleSubtractPrevFrame();  }
       		else if (evt.key == "Enter") {
       		  videoMarkers = addMarker(videoMarkers, video.currentTime, "no comment");
       		  // If embedded in Shiny app, let it know about new markers
@@ -709,6 +710,10 @@ HTMLWidgets.widget({
       		hoverPoint = getMouseTextureCoord(scrubberCanvas,evt).x;
       	};
 
+        tabPressedGlobal = function(evt) {
+          if (evt.key == "Tab") { videoCanvas.focus(); }
+        }
+
       	videoCanvas.addEventListener('keydown', keydownEitherCanvas);
       	videoCanvas.addEventListener('wheel', wheelVideoCanvas);
       	videoCanvas.addEventListener('mousedown', mousedownVideoCanvas);
@@ -721,6 +726,8 @@ HTMLWidgets.widget({
       	scrubberCanvas.addEventListener('mousemove', mousemoveScrubberCanvas);
       	scrubberCanvas.addEventListener('mouseenter', mouseenterScrubberCanvas);
       	scrubberCanvas.addEventListener('mouseleave', mouseleaveScrubberCanvas);
+
+        document.addEventListener('keypress',tabPressedGlobal);
 
         // Vertex shader program
         const vsSource = `

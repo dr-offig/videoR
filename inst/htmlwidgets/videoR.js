@@ -660,9 +660,9 @@ HTMLWidgets.widget({
 
       	keydownEitherCanvas = function(evt) {
           unmute();
-          evt.preventDefault();
+
           if (evt.key == "0") { resetZoomAndPan(); }
-       		else if (evt.key == " ") { togglePlayback(); }
+       		else if (evt.key == " ") { evt.preventDefault(); togglePlayback(); }
       		else if (evt.key == "ArrowRight") {
       		  if (evt.shiftKey) { gotoNextMarker(); }
       		  else { if (video.paused) showNextFrame(); else nudge(1.0); }
@@ -671,9 +671,10 @@ HTMLWidgets.widget({
       		  if (evt.shiftKey) { gotoPreviousMarker(); }
       		  else { if (video.paused) nudge(-1/30); else nudge(-1.0); }
       		}
-      		else if (evt.key == "F13") { capture = true; }
-      		else if (evt.key == "d") {toggleSubtractPrevFrame();  }
+      		else if (evt.key == "F13") { evt.preventDefault(); capture = true; }
+      		else if (evt.key == "d") { toggleSubtractPrevFrame();  }
       		else if (evt.key == "Enter") {
+      		  evt.preventDefault();
       		  videoMarkers = addMarker(videoMarkers, video.currentTime, "no comment");
       		  // If embedded in Shiny app, let it know about new markers
             if (HTMLWidgets.shinyMode) {
@@ -710,9 +711,9 @@ HTMLWidgets.widget({
       		hoverPoint = getMouseTextureCoord(scrubberCanvas,evt).x;
       	};
 
-        tabPressedGlobal = function(evt) {
-          if (evt.key == "Tab") { videoCanvas.focus(); }
-        }
+        //tabPressedGlobal = function(evt) {
+        //  if (evt.key == "Tab") { videoCanvas.focus(); }
+        //}
 
       	videoCanvas.addEventListener('keydown', keydownEitherCanvas);
       	videoCanvas.addEventListener('wheel', wheelVideoCanvas);
@@ -727,7 +728,7 @@ HTMLWidgets.widget({
       	scrubberCanvas.addEventListener('mouseenter', mouseenterScrubberCanvas);
       	scrubberCanvas.addEventListener('mouseleave', mouseleaveScrubberCanvas);
 
-        document.addEventListener('keypress',tabPressedGlobal);
+        //document.addEventListener('keypress',tabPressedGlobal);
 
         // Vertex shader program
         const vsSource = `

@@ -680,7 +680,7 @@ HTMLWidgets.widget({
       		else if (evt.key == "d") { toggleSubtractPrevFrame();  }
       		else if (evt.key == "Enter") {
       		  evt.preventDefault();
-      		  videoMarkers = addMarker(videoMarkers, video.currentTime, "no comment");
+      		  videoMarkers = addMarker(videoMarkers, video.currentTime, defaultComment);
       		  // If embedded in Shiny app, let it know about new markers
             if (HTMLWidgets.shinyMode) {
               Shiny.onInputChange("markers", videoMarkers);

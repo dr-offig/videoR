@@ -129,7 +129,7 @@ HTMLWidgets.widget({
     //var hoverMarker = -1;
     var hoverPoint = 0.0;
     var hoveringOverScrubber = false;
-
+    var defaultComment = "--";
     resetZoomAndPan = function(dur) {
 	    old_poi = poi;
 	    target_poi = { x: 0.0, y: 0.0 };
@@ -513,11 +513,16 @@ HTMLWidgets.widget({
 
          // If embedded in Shiny app, listen for changes to markers from Shiny
         if (HTMLWidgets.shinyMode) {
-            Shiny.addCustomMessageHandler("updateMarkers",
+          Shiny.addCustomMessageHandler("updateMarkers",
             function(newMarkers) {
               videoMarkers = newMarkers
               console.log("Setting markers times to: " + newMarkers.time)
               //Shiny.onInputChange("markers", videoMarkers);
+            })
+
+          Shiny.addCustomMessageHandler("updateDefaultComment",
+            function(newComment) {
+              defaultComment = newComment;
             })
         };
 

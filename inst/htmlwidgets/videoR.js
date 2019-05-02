@@ -98,11 +98,11 @@ HTMLWidgets.widget({
       //  else { column[1].push(null); }
       //}
       //return markers;
-      var timeAs;
-      var timeBs;
-      var types;
-      var colours;
-      var comments;
+      let timeAs;
+      let timeBs;
+      let types;
+      let colours;
+      let comments;
       if (typeof(tb) === 'undefined') tb = ta;
 
       if (markers !== null) {
@@ -117,11 +117,11 @@ HTMLWidgets.widget({
         colours.push(colourStr);
         comments.push(commentStr);
       } else {
-        timeAs = [ta];
-        timeBs = [tb];
-        types = [typeStr];
-        colours = [colourStr];
-        comments= [commentStr];
+        timeAs = new Array(); timeAs[0] = ta;
+        timeBs = new Array(); timeBs[0] = tb;
+        types = new Array(); types[0] = typeStr;
+        colours = new Array(); colours[0] = colourStr;
+        comments = new Array(); comments[0] = commentStr;
       }
 
       const output = { timeA: timeAs, timeB: timeBs, type: types, colour: colours, comment: comments };

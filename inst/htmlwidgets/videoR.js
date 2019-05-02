@@ -740,6 +740,7 @@ HTMLWidgets.widget({
 
       		  // If embedded in Shiny app, let it know about new markers
             if (HTMLWidgets.shinyMode) {
+              console.log(videoMarkers);
               Shiny.onInputChange("markers", videoMarkers);
             }
       		}

@@ -554,7 +554,6 @@ HTMLWidgets.widget({
           Shiny.addCustomMessageHandler("updateMarkers",
             function(newMarkers) {
               videoMarkers = newMarkers
-              console.log("Setting markers times to: " + newMarkers.time)
               //Shiny.onInputChange("markers", videoMarkers);
             })
 
@@ -731,11 +730,11 @@ HTMLWidgets.widget({
       		  } else {
       		    const shiftPressed = evt.getModifierState("Shift");
       		    if (shiftPressed) {
-      		      videoMarkers = addMarker(videoMarkers, video.currentTime, null, "REGION", defaultComment);
+      		      videoMarkers = addMarker(videoMarkers, video.currentTime, null, "REGION", defaultColour, defaultComment);
                 definingRegion = true;
                 definingRegionStartTime = video.currentTime;
       		    } else {
-      		      videoMarkers = addMarker(videoMarkers, video.currentTime, video.currentTime, "POINT", defaultComment);
+      		      videoMarkers = addMarker(videoMarkers, video.currentTime, video.currentTime, "POINT", defaultColour, defaultComment);
       		    }
       		  }
 

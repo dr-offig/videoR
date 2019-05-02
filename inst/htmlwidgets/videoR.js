@@ -60,7 +60,7 @@ HTMLWidgets.widget({
           var tmpInd = -1;
           for (var i=0; i<N; i++) {
             var val = Math.abs(this[i]-x);
-            if (val < tmpVal) {
+            if (val !== null && val < tmpVal) {
               tmpInd = i;
               tmpVal = val;
             }
@@ -89,7 +89,7 @@ HTMLWidgets.widget({
       return (ta2.join("."));
     };
 
-    addMarker = function(markers, t, commentStr) {
+    addMarker = function(markers, ta, tb, typeStr, colourStr, commentStr) {
       //const columns = Object.entries(markers);
       //for (var i = 0; i < columns.length; i++) {
       //  var column = columns[i];
@@ -98,20 +98,33 @@ HTMLWidgets.widget({
       //  else { column[1].push(null); }
       //}
       //return markers;
-      var times;
+      var timeAs;
+      var timeBs;
+      var types;
+      var colours;
       var comments;
+      if (typeof(tb) === 'undefined') tb = ta;
 
       if (markers !== null) {
-        times = markers.time;
+        timeAs = markers.timeA;
+        timeBs = markers.timeB;
+        types = markers.type;
+        colours = markers.colour;
         comments = markers.comment;
-        times.push(t);
+        timeAs.push(ta);
+        timeBs.push(tb);
+        types.push(typeStr);
+        colours.push(colourStr);
         comments.push(commentStr);
       } else {
-        times = [t];
+        timeAs = [ta];
+        timeBs = [tb];
+        types = [typeStr];
+        colours = [colourStr];
         comments= [commentStr];
       }
 
-      const output = { time: times, comment: comments };
+      const output = { timeA: timeAs, timeB: timeBs, type: types, colour: colours, comment: comments };
       return output;
     };
 
@@ -130,6 +143,10 @@ HTMLWidgets.widget({
     var hoverPoint = 0.0;
     var hoveringOverScrubber = false;
     var defaultComment = "--";
+    var defaultColour = "indianred";
+    var definingRegion = false;
+    var definingRegionStartTime = null;
+
     resetZoomAndPan = function(dur) {
 	    old_poi = poi;
 	    target_poi = { x: 0.0, y: 0.0 };
@@ -448,14 +465,35 @@ HTMLWidgets.widget({
 
       // red lines at markers
       if (markers !== null) {
-        const marker_times = markers.time
-        function drawMarkerLine(marker_time) {
-          const markerPos = width * marker_time / totaltime;
-          ctx.font = '26px serif';
-          ctx.fillStyle = 'indianred';
-          ctx.fillRect(markerPos-1, 0, 2, height);
-        }
-        marker_times.map(drawMarkerLine);
+        const marker_timeAs = markers.timeA
+        const marker_timeBs = markers.timeB
+        const colours = markers.colour;
+        const marker_times = marker_timeAs.concat(marker_timeBs);
+
+        //function drawMarkerLine(marker_time) {
+        //  const markerPos = width * marker_time / totaltime;
+        //  ctx.font = '26px serif';
+        //  ctx.fillStyle = 'indianred';
+        //  ctx.fillRect(markerPos-1, 0, 2, height); }
+
+        function drawMarkerRegion(ta, tb, colour) {
+          const markerAPos = width * ta / totaltime;
+          var markerBPos;
+          if (tb === null) {
+            if (!definingRegion) { markerBPos = markerAPos; }
+            else { markerBPos = width * curtime / totaltime; }}
+          else { markerBPos = width * tb / totaltime; }
+
+          //ctx.font = '26px serif';
+          ctx.fillStyle = colour ? colour : defaultColour;
+          ctx.fillRect(markerAPos, 0, Math.max(4,markerBPos - markerAPos), height); }
+
+        // old way: draw individual markers
+        //marker_times.map(drawMarkerLine);
+
+        // draw the marked regions
+        var j; var J = marker_timeAs.length;
+        for (j=0; j<J; j++) { drawMarkerRegion(marker_timeAs[j], marker_timeBs[j]); }
 
         // If hovering over marker readout its time
         if (isHovering) {
@@ -524,6 +562,11 @@ HTMLWidgets.widget({
             function(newComment) {
               defaultComment = newComment;
             })
+
+          Shiny.addCustomMessageHandler("updateDefaultColour",
+            function(newColour) {
+              defaultColour = newColour;
+            })
         };
 
         // The main html for the widget
@@ -580,7 +623,7 @@ HTMLWidgets.widget({
 
         gotoNextMarker = function() {
           if (videoMarkers !== null) {
-            times = videoMarkers.time;
+            times = videoMarkers.timeA;
             candInd = times.indexOfClosestTo(video.currentTime);
             if (0 <= candInd && candInd < times.length && video.currentTime < times[[candInd]]) {
               video.currentTime = times[[candInd]];
@@ -593,7 +636,7 @@ HTMLWidgets.widget({
 
         gotoPreviousMarker = function() {
           if (videoMarkers !== null) {
-            times = videoMarkers.time;
+            times = videoMarkers.timeA;
             candInd = times.indexOfClosestTo(video.currentTime);
             if (video.currentTime > times[[candInd]]) {
               video.currentTime = times[[candInd]];
@@ -680,7 +723,22 @@ HTMLWidgets.widget({
       		else if (evt.key == "d") { toggleSubtractPrevFrame();  }
       		else if (evt.key == "Enter") {
       		  evt.preventDefault();
-      		  videoMarkers = addMarker(videoMarkers, video.currentTime, defaultComment);
+      		  if (definingRegion) {
+      		    const ind = videoMarkers.timeA.indexOfClosestTo(definingRegionStartTime);
+      		    videoMarkers.timeB[ind] = video.currentTime;
+      		    definingRegion = false;
+      		    definingRegionStartTime = null;
+      		  } else {
+      		    const shiftPressed = evt.getModifierState("Shift");
+      		    if (shiftPressed) {
+      		      videoMarkers = addMarker(videoMarkers, video.currentTime, null, "REGION", defaultComment);
+                definingRegion = true;
+                definingRegionStartTime = video.currentTime;
+      		    } else {
+      		      videoMarkers = addMarker(videoMarkers, video.currentTime, video.currentTime, "POINT", defaultComment);
+      		    }
+      		  }
+
       		  // If embedded in Shiny app, let it know about new markers
             if (HTMLWidgets.shinyMode) {
               Shiny.onInputChange("markers", videoMarkers);
